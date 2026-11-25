@@ -391,6 +391,11 @@ const en = {
   "config.skippedUnnamed": "(unnamed)",
   "config.mixOn": "Mix on",
   "config.mixOff": "Mix off",
+  "config.subTls": "Sub TLS",
+  "config.subTlsNativeHint":
+    "Fetch subscriptions with the OS TLS stack (Schannel on Windows). Default.",
+  "config.subTlsRustlsHint":
+    "Fetch subscriptions with rustls. Switch here when a Cloudflare-fronted panel returns 403 under native TLS.",
   "config.refreshAll": "Update all",
   "config.refreshing": "Updating…",
   "config.add": "Add profile",
@@ -1530,6 +1535,10 @@ const zh: Record<MessageKey, string> = {
   "config.skippedUnnamed": "（未命名）",
   "config.mixOn": "Mix 开",
   "config.mixOff": "Mix 关",
+  "config.subTls": "订阅 TLS",
+  "config.subTlsNativeHint": "使用系统自带 TLS 拉取订阅（Windows 为 SChannel）。默认。",
+  "config.subTlsRustlsHint":
+    "使用 rustls 拉取订阅。机场面板前置了 Cloudflare、native 下返回 403 时切到这里。",
   "config.refreshAll": "更新全部",
   "config.refreshing": "更新中…",
   "config.add": "添加配置",

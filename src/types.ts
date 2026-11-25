@@ -591,6 +591,9 @@ export interface AppSettings {
   /** Same for the Xray generator (freedom `fragment` outbound +
    * `sockopt.dialerProxy`). Effective only under the Xray core. */
   tls_fragment_xray?: boolean;
+  /** TLS backend used when fetching subscriptions over HTTP(S):
+   *  `native` (OS TLS stack, default) | `rustls`. Subscription fetches only. */
+  subscription_tls_backend?: SubscriptionTlsBackend;
 }
 
 /** One protocol→core row of the multi-core settings table. */
@@ -606,6 +609,9 @@ export type CoreKind = "singbox" | "xray" | "mihomo";
 
 /** Manual / app smart switch / sing-box urltest. */
 export type AutoSelectMode = "off" | "smart" | "kernel";
+
+/** TLS backend for subscription URL fetches. */
+export type SubscriptionTlsBackend = "native" | "rustls";
 
 export type ThemeId = "aerospace" | "day";
 

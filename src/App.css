@@ -3926,6 +3926,18 @@ button.small {
   gap: 1.15rem;
 }
 
+/* Subscription-page header: TLS backend picker for URL fetches. */
+.sub-tls-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sub-tls-label {
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .config-group-title {
   margin: 0 0 0.5rem;
   font-size: 0.78rem;

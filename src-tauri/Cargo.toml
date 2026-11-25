@@ -26,17 +26,11 @@ idna = "1"
 thiserror = "2"
 sha2 = "0.10"
 hex = "0.4"
-# default-tls(native-tls/SChannel) 的 ClientHello 指纹会被 Cloudflare WAF 拦截(订阅拉取 403),
-# 换成 rustls 后端(实测可通过),其余特性保持默认集不变
-# (macos-system-configuration 在 0.12 里是 system-proxy 的别名,默认集即含它)。
-reqwest = { version = "0.12", default-features = false, features = [
-    "http2",
-    "charset",
-    "macos-system-configuration",
-    "rustls-tls",
-    "json",
-    "stream",
-] }
+# reqwest 同时编入两套 TLS 后端：默认仍是 native-tls(与上游一致)；SChannel 的 ClientHello 指纹会被
+# 部分 Cloudflare WAF 拦截(订阅拉取 403)，所以另编入 rustls，订阅页可按 settings.subscription_tls_backend
+# 切换(见 services/import.rs)。内核下载等其余请求固定走 native。显式开 native-tls 只是让代码能调用
+# use_native_tls() 明确选定后端(它与默认特性 default-tls 等价，默认集里没有这个特性名)。
+reqwest = { version = "0.12", default-features = true, features = ["json", "stream", "native-tls", "rustls-tls"] }
 # Clash API must not use reqwest::blocking — nested Tokio runtime panics inside
 # tauri async workers ("Cannot drop a runtime in a context where blocking is not allowed").
 ureq = { version = "2.12", default-features = true, features = ["json"] }

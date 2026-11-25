@@ -194,13 +194,20 @@ pub async fn add_subscription_url(
             url: url.trim().to_string(),
         },
     )?;
-    let mixed_port = state
-        .with_store(|s| Ok(s.settings.mixed_port))
+    let (mixed_port, tls_backend) = state
+        .with_store(|s| Ok((s.settings.mixed_port, s.settings.subscription_tls_backend)))
         .map_err(|e| e.to_string())?;
-    let mut outcome =
-        import_from_url_with_id(name, url, Some(fresh_id), via, Some(mixed_port), user_agent)
-            .await
-            .map_err(|e| e.to_string())?;
+    let mut outcome = import_from_url_with_id(
+        name,
+        url,
+        Some(fresh_id),
+        via,
+        Some(mixed_port),
+        user_agent,
+        tls_backend,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
     apply_auto_update_prefs(
         &mut outcome.subscription,
         auto_update.unwrap_or(false),
@@ -334,8 +341,8 @@ pub async fn update_subscription(
         .unwrap_or_else(|| existing.name.clone());
 
     let via = via_proxy.unwrap_or(existing.via_proxy);
-    let mixed_port = state
-        .with_store(|s| Ok(s.settings.mixed_port))
+    let (mixed_port, tls_backend) = state
+        .with_store(|s| Ok((s.settings.mixed_port, s.settings.subscription_tls_backend)))
         .map_err(|e| e.to_string())?;
 
     let kind = kind.to_ascii_lowercase();
@@ -355,6 +362,7 @@ pub async fn update_subscription(
                 via,
                 Some(mixed_port),
                 user_agent,
+                tls_backend,
             )
             .await
             .map_err(|e| e.to_string())?;
@@ -469,8 +477,8 @@ async fn refresh_subscription_once(
         .map_err(|e| e.to_string())?;
 
     let via = via_proxy.unwrap_or(existing.via_proxy);
-    let mixed_port = state
-        .with_store(|s| Ok(s.settings.mixed_port))
+    let (mixed_port, tls_backend) = state
+        .with_store(|s| Ok((s.settings.mixed_port, s.settings.subscription_tls_backend)))
         .map_err(|e| e.to_string())?;
 
     let mut outcome = match &existing.source {
@@ -481,6 +489,7 @@ async fn refresh_subscription_once(
             via,
             Some(mixed_port),
             existing.user_agent.clone(),
+            tls_backend,
         )
         .await
         .map_err(|e| e.to_string())?,

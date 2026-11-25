@@ -162,6 +162,36 @@ impl TrayIconStyle {
     }
 }
 
+/// 订阅拉取使用的 TLS 后端。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionTlsBackend {
+    /// 系统自带 TLS（Windows 为 SChannel），与上游默认行为一致。
+    #[default]
+    Native,
+    /// rustls：部分 Cloudflare 面板会拦截系统 TLS 的 ClientHello 指纹，改用它可通过。
+    Rustls,
+}
+
+impl SubscriptionTlsBackend {
+    /// 返回该后端在存储和前端交互中使用的字符串标识。
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Native => "native",
+            Self::Rustls => "rustls",
+        }
+    }
+
+    /// 把字符串标识解析为后端，无法识别时返回 None。
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "native" => Some(Self::Native),
+            "rustls" => Some(Self::Rustls),
+            _ => None,
+        }
+    }
+}
+
 /// Extra inbound listener for the generated sing-box config.
 /// `kind`: `mixed` | `http`; `allow_lan` decides the listen host
 /// (0.0.0.0 vs 127.0.0.1).
@@ -346,6 +376,12 @@ pub struct AppSettings {
     /// is deliberately no mihomo switch.
     #[serde(default)]
     pub tls_fragment_xray: bool,
+
+    /// 订阅拉取使用的 TLS 后端：`native`（系统 TLS，默认）| `rustls`。
+    /// 部分 Cloudflare 面板会拦截系统 TLS 的 ClientHello 指纹并返回 403，
+    /// 可在订阅页切到 rustls。仅影响订阅拉取，内核下载等其余请求不受影响。
+    #[serde(default)]
+    pub subscription_tls_backend: SubscriptionTlsBackend,
 }
 
 /// One protocol→core row of the multi-core settings table.
@@ -504,6 +540,7 @@ impl Default for AppSettings {
             sidecar_port: default_sidecar_port(),
             tls_fragment_singbox: false,
             tls_fragment_xray: false,
+            subscription_tls_backend: SubscriptionTlsBackend::Native,
         }
     }
 }
@@ -712,5 +749,37 @@ mod tests {
         let back: AppSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.extra_inbounds, settings.extra_inbounds);
         assert!(json.contains("\"allow_lan\":true"));
+    }
+
+    /// 旧版 store.json 缺少 subscription_tls_backend 时应读成 native，且 rustls 能正确往返。
+    #[test]
+    fn subscription_tls_backend_defaults_to_native_and_roundtrips() {
+        let legacy = r#"{"mixed_port":2080,"api_port":19090}"#;
+        let settings: AppSettings = serde_json::from_str(legacy).unwrap();
+        assert_eq!(
+            settings.subscription_tls_backend,
+            SubscriptionTlsBackend::Native
+        );
+        assert_eq!(
+            SubscriptionTlsBackend::parse("native"),
+            Some(SubscriptionTlsBackend::Native)
+        );
+        assert_eq!(
+            SubscriptionTlsBackend::parse(" RUSTLS "),
+            Some(SubscriptionTlsBackend::Rustls)
+        );
+        assert_eq!(SubscriptionTlsBackend::parse("nope"), None);
+
+        let settings = AppSettings {
+            subscription_tls_backend: SubscriptionTlsBackend::Rustls,
+            ..AppSettings::default()
+        };
+        let json = serde_json::to_string(&settings).unwrap();
+        assert!(json.contains("\"subscription_tls_backend\":\"rustls\""));
+        let back: AppSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            back.subscription_tls_backend,
+            SubscriptionTlsBackend::Rustls
+        );
     }
 }

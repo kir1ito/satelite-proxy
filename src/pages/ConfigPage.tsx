@@ -16,6 +16,7 @@ import {
   refreshSubscription,
   removeSubscription,
   setMixMode,
+  updateSettings,
   updateSubscription,
 } from "../api";
 import {
@@ -24,6 +25,7 @@ import {
 } from "../components/AddConfigModal";
 import { EditLocalNodesModal } from "../components/EditLocalNodesModal";
 import { GlassButton } from "../components/GlassButton";
+import { GlassSeg } from "../components/GlassSeg";
 import { GlassSwitch } from "../components/GlassSwitch";
 import { useImportIntent } from "../ImportIntentContext";
 import { getVersion } from "@tauri-apps/api/app";
@@ -32,6 +34,7 @@ import { ErrorModal } from "../components/ErrorModal";
 import type {
   CoreSupportReport,
   ImportResult,
+  SubscriptionTlsBackend,
   SubscriptionTraffic,
   SubscriptionUrlEntry,
   SubscriptionView,
@@ -329,6 +332,11 @@ export function ConfigPage() {
     () => peekSettings()?.mix_mode ?? false,
   );
   const [runtimeSource, setRuntimeSource] = useState("generated");
+  // TLS backend for subscription URL fetches; seeded from the same snapshot
+  // as the mix switch so the header picker paints its persisted value.
+  const [subTls, setSubTls] = useState<SubscriptionTlsBackend>(
+    () => peekSettings()?.subscription_tls_backend ?? "native",
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -366,6 +374,7 @@ export function ConfigPage() {
       setItems(list);
       setMixModeState(!!settings.mix_mode);
       setRuntimeSource(settings.runtime_source || "generated");
+      setSubTls(settings.subscription_tls_backend ?? "native");
     } catch (e) {
       setListError(typeof e === "string" ? e : String(e));
     } finally {
@@ -449,6 +458,18 @@ export function ConfigPage() {
       // policy may collapse multi-enabled → reload list
       const list = await listSubscriptions();
       setItems(list);
+    } catch (e) {
+      setListError(typeof e === "string" ? e : String(e));
+    }
+  }
+
+  async function onSelectSubTls(value: string) {
+    setListError(null);
+    try {
+      const settings = await updateSettings({
+        subscriptionTlsBackend: value,
+      });
+      setSubTls(settings.subscription_tls_backend ?? "native");
     } catch (e) {
       setListError(typeof e === "string" ? e : String(e));
     }
@@ -951,6 +972,23 @@ export function ConfigPage() {
           <p className="page-desc">{t("config.desc")}</p>
         </div>
         <div className="header-actions">
+          <div className="sub-tls-picker">
+            <span className="sub-tls-label muted">{t("config.subTls")}</span>
+            <GlassSeg
+              value={subTls}
+              ariaLabel={t("config.subTls")}
+              ready={!loading}
+              onChange={(v) => void onSelectSubTls(v)}
+              options={[
+                { value: "native", label: "native" },
+                { value: "rustls", label: "rustls" },
+              ]}
+              titles={{
+                native: t("config.subTlsNativeHint"),
+                rustls: t("config.subTlsRustlsHint"),
+              }}
+            />
+          </div>
           <GlassSwitch
             checked={mixMode}
             ready={!loading}

@@ -1,7 +1,7 @@
 use crate::domain::ManualNodeDraft;
 use crate::domain::{
     CustomConfigKind, ParseResult, ProxyNode, Subscription, SubscriptionFormat, SubscriptionSource,
-    SubscriptionTraffic,
+    SubscriptionTlsBackend, SubscriptionTraffic,
 };
 use crate::error::{AppError, AppResult};
 use crate::subscription::{
@@ -48,6 +48,7 @@ pub struct ImportOutcome {
 /// `via_proxy`: fetch through local mixed HTTP proxy (127.0.0.1:mixed_port).
 /// `mixed_port`: required when via_proxy is true.
 /// `user_agent`: custom UA override; empty/None falls back to the built-in default.
+/// `tls_backend`: 本次订阅拉取使用的 TLS 后端（native 或 rustls），来自应用设置。
 pub async fn import_from_url_with_id(
     name: Option<String>,
     url: String,
@@ -55,6 +56,7 @@ pub async fn import_from_url_with_id(
     via_proxy: bool,
     mixed_port: Option<u16>,
     user_agent: Option<String>,
+    tls_backend: SubscriptionTlsBackend,
 ) -> AppResult<ImportOutcome> {
     let url = url.trim().to_string();
     if url.is_empty() {
@@ -81,6 +83,7 @@ pub async fn import_from_url_with_id(
         .timeout(std::time::Duration::from_secs(45))
         .redirect(reqwest::redirect::Policy::limited(10))
         .user_agent(ua);
+    builder = with_subscription_tls_backend(builder, tls_backend);
 
     if via_proxy {
         let port = mixed_port.unwrap_or(2080);
@@ -162,6 +165,17 @@ pub async fn import_from_url_with_id(
         SubscriptionTraffic::merge(traffic, outcome.subscription.traffic);
     outcome.raw_body = Some(raw_body);
     Ok(outcome)
+}
+
+/// 按应用设置给订阅请求客户端选择 TLS 后端（两套后端都已编入，见 Cargo.toml 的 reqwest 配置）。
+fn with_subscription_tls_backend(
+    builder: reqwest::ClientBuilder,
+    backend: SubscriptionTlsBackend,
+) -> reqwest::ClientBuilder {
+    match backend {
+        SubscriptionTlsBackend::Native => builder.use_native_tls(),
+        SubscriptionTlsBackend::Rustls => builder.use_rustls_tls(),
+    }
 }
 
 /// UA used when fetching subscriptions (must look like Clash for many panels).
@@ -720,6 +734,19 @@ fn days_from_civil(y: i32, m: i32, d: i32) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 两种 TLS 后端下订阅请求客户端都应能离线构建成功。
+    #[test]
+    fn subscription_client_builds_with_both_tls_backends() {
+        for backend in [
+            SubscriptionTlsBackend::Native,
+            SubscriptionTlsBackend::Rustls,
+        ] {
+            with_subscription_tls_backend(reqwest::Client::builder(), backend)
+                .build()
+                .expect("subscription client should build");
+        }
+    }
 
     #[test]
     fn same_name_different_credentials_get_distinct_ids() {

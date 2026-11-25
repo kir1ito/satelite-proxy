@@ -407,6 +407,8 @@ export interface SettingsUpdatePayload {
   protocolCores?: import("./types").ProtocolCoreItem[] | null;
   /** Base loopback port for the sidecar's per-node inbounds. */
   sidecarPort?: number | null;
+  /** TLS backend for subscription URL fetches: "native" (default) | "rustls". */
+  subscriptionTlsBackend?: string | null;
 }
 
 type SettingsWaiter = {
@@ -462,6 +464,7 @@ function scheduleSettingsWrite() {
       tlsFragmentXray: payload.tlsFragmentXray ?? null,
       protocolCores: payload.protocolCores ?? null,
       sidecarPort: payload.sidecarPort ?? null,
+      subscriptionTlsBackend: payload.subscriptionTlsBackend ?? null,
     })
       .then((settings) => {
         settingsSnapshot = settings;

@@ -119,6 +119,8 @@ pub fn update_settings(
     // mihomo's kernel has no equivalent, hence no switch for it.
     tls_fragment_singbox: Option<bool>,
     tls_fragment_xray: Option<bool>,
+    // TLS backend for subscription URL fetches: native (OS TLS, default) | rustls.
+    subscription_tls_backend: Option<String>,
 ) -> Result<AppSettings, String> {
     let mut launch_changed: Option<bool> = None;
     let mut auto_select_changed: Option<(
@@ -411,6 +413,11 @@ pub fn update_settings(
                 if store.settings.tls_fragment_xray != v {
                     core_config_changed = true;
                     store.settings.tls_fragment_xray = v;
+                }
+            }
+            if let Some(raw) = subscription_tls_backend {
+                if let Some(backend) = crate::domain::SubscriptionTlsBackend::parse(&raw) {
+                    store.settings.subscription_tls_backend = backend;
                 }
             }
             Ok(store.settings.clone())
