@@ -26,7 +26,17 @@ idna = "1"
 thiserror = "2"
 sha2 = "0.10"
 hex = "0.4"
-reqwest = { version = "0.12", default-features = true, features = ["json", "stream"] }
+# default-tls(native-tls/SChannel) 的 ClientHello 指纹会被 Cloudflare WAF 拦截(订阅拉取 403),
+# 换成 rustls 后端(实测可通过),其余特性保持默认集不变
+# (macos-system-configuration 在 0.12 里是 system-proxy 的别名,默认集即含它)。
+reqwest = { version = "0.12", default-features = false, features = [
+    "http2",
+    "charset",
+    "macos-system-configuration",
+    "rustls-tls",
+    "json",
+    "stream",
+] }
 # Clash API must not use reqwest::blocking — nested Tokio runtime panics inside
 # tauri async workers ("Cannot drop a runtime in a context where blocking is not allowed").
 ureq = { version = "2.12", default-features = true, features = ["json"] }
